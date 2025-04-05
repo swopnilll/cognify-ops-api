@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",                    // Modern JavaScript features
+    "module": "CommonJS",                   // Use CommonJS for Node.js compatibility
+    "lib": ["ESNext"],                      // Include modern ECMAScript libraries
+    "outDir": "./dist",                     // Output directory for compiled JavaScript
+    "rootDir": "./src",                     // Root directory for source TypeScript files
+    "esModuleInterop": true,                // Enable default imports for non-ESM modules
+    "skipLibCheck": true,                   // Skip type checking of declaration files for faster build
+    "forceConsistentCasingInFileNames": true
+  },
+  "include": ["src/**/*"],                // Include all TypeScript files inside the src directory
+  "exclude": ["node_modules"]                // Exclude node_modules directory
+}
