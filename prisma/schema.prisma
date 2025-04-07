@@ -1,15 +1,86 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
-  output = "../generated/prisma"
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+model Role {
+  role_id    Int       @id @default(autoincrement())
+  role_name  String    @unique
+  created_at DateTime  @default(now())
+  updated_at DateTime  @updatedAt
+  user_roles User_Role[]
+}
+
+model User_Role {
+  user_id    String
+  role_id    Int
+  project_id Int
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  user       User     @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  role       Role     @relation(fields: [role_id], references: [role_id], onDelete: Cascade)
+  project    Project  @relation(fields: [project_id], references: [project_id], onDelete: Cascade)
+
+  @@id([user_id, role_id, project_id]) // Composite primary key
+  @@index([role_id])
+  @@index([project_id])
+}
+
+model Project {
+  project_id  Int          @id @default(autoincrement())
+  name        String
+  description String?
+  created_by  String       // Foreign key to User (Auth0 user_id)
+  created_at  DateTime     @default(now())
+  updated_at  DateTime     @updatedAt
+  tickets     Ticket[]
+  project_users Project_User[]
+  user        User         @relation("ProjectCreator", fields: [created_by], references: [user_id], onDelete: Cascade) // Explicit relation name
+  user_roles  User_Role[]
+}
+
+model Ticket {
+  ticket_id   Int        @id @default(autoincrement())
+  project_id  Int
+  name        String
+  description String?
+  created_by  String     // Foreign key to User (Auth0 user_id)
+  status_id   Int?       // Foreign key to Status
+  created_at  DateTime   @default(now())
+  updated_at  DateTime   @updatedAt
+  project     Project    @relation(fields: [project_id], references: [project_id], onDelete: Cascade)
+  creator     User       @relation("CreatedTickets", fields: [created_by], references: [user_id], onDelete: Cascade)
+  status      Status?    @relation("TicketStatus", fields: [status_id], references: [status_id])
+}
+
+model User {
+  user_id             String       @id
+  created_projects    Project[]    @relation("ProjectCreator") // Link to the same relation name
+  created_tickets     Ticket[]     @relation("CreatedTickets")
+  user_roles          User_Role[]
+  participating_projects Project_User[] @relation("UserToProject")
+}
+
+model Project_User {
+  project_id Int
+  user_id    String
+  joined_at  DateTime @default(now())
+  updated_at DateTime @updatedAt
+  project    Project  @relation(fields: [project_id], references: [project_id], onDelete: Cascade)
+  user       User     @relation("UserToProject", fields: [user_id], references: [user_id], onDelete: Cascade)
+
+  @@id([project_id, user_id]) // Composite primary key
+  @@index([user_id])
+}
+
+model Status {
+  status_id  Int       @id @default(autoincrement())
+  name       String    @unique
+  created_at DateTime  @default(now())
+  updated_at DateTime  @updatedAt
+  tickets    Ticket[]  @relation("TicketStatus")
 }
