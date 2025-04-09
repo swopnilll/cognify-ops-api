@@ -1,86 +1,80 @@
-import axios, { AxiosError } from 'axios';
-import { getAuth0Config } from '../../config/auth0';
+// src/services/authService.ts
+import { AxiosError } from "axios";
+import {
+  auth0Signup,
+  auth0Login,
+  createUser,
+  getUser,
+} from "../../repositories/auth/authRepository";
 
-const auth0Config = getAuth0Config();
-
-const getManagementToken = async (): Promise<string> => {
-  const { data } = await axios.post(
-    `https://${auth0Config.domain}/oauth/token`,
-    new URLSearchParams({
-      grant_type: 'client_credentials',
-      client_id: auth0Config.clientId,
-      client_secret: auth0Config.clientSecret,
-      audience: auth0Config.managementAudience
-    }),
-    { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
-  );
-  return data.access_token;
-};
-
-export const login = async (email: string, password: string) => {
+/**
+ * Signs up a new user by first creating the user in Auth0,
+ * then creating a corresponding record in the local database.
+ *
+ * @param email - The user's email.
+ * @param password - The user's password.
+ * @returns An object containing the Auth0 response and local user record.
+ */
+export const signup = async (email: string, password: string) => {
   try {
-    const params = new URLSearchParams();
+    // Create user in Auth0.
+    const auth0User = await auth0Signup(email, password);
 
-    params.append('grant_type', 'password');
-    params.append('username', email);
-    params.append('password', password);
-    params.append('audience', auth0Config.apiIdentifier);
-    params.append('client_id', auth0Config.clientId);
-    params.append('client_secret', auth0Config.clientSecret);
-    params.append('scope', 'openid profile email');
-    params.append('connection', 'Username-Password-Authentication');
+    // Check for a valid user_id in the Auth0 response.
+    if (!auth0User.user_id) {
+      throw new Error("Auth0 did not return a valid user_id");
+    }
 
-    const response = await axios.post(
-      `https://${auth0Config.domain}/oauth/token`,
-      params,
-      {
-        headers: { 
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'Accept-Encoding': 'gzip,deflate,compress' 
-        }
-      }
-    );
-    return response.data;
-  } catch (error) {
-    const axiosError = error as AxiosError;
-    const errorData = axiosError.response?.data || {} as any;
-    console.error('Auth0 Error:', {
-      status: axiosError.response?.status,
-      error: errorData?.error,
-      description: errorData?.error_description,
-      body: errorData
-    });
-    throw new Error(errorData?.error_description || 'Login failed');
+    // Create a corresponding record in the local database.
+    const localUser = await createUser(auth0User.user_id);
+
+    // Return both Auth0 and local user details.
+    return { auth0User, localUser };
+  } catch (error: any) {
+    // Optionally, you can add more detailed error handling here.
+    if (error instanceof AxiosError) {
+      console.error("Signup error:", error.response?.data || error.message);
+    } else {
+      console.error("Signup error:", error);
+    }
+    throw error;
   }
 };
 
-export const signup = async (email: string, password: string) => {
+/**
+ * Logs in a user using Auth0, then retrieves the corresponding local user record.
+ *
+ * @param email - The user's email.
+ * @param password - The user's password.
+ * @returns An object containing the Auth0 login data and local user record.
+ */
+export const login = async (email: string, password: string) => {
   try {
-    const mgmtToken = await getManagementToken();
-    
-    const response = await axios.post(
-      `https://${auth0Config.domain}/api/v2/users`,
-      {
-        email,
-        password,
-        connection: 'Username-Password-Authentication',
-        verify_email: false, // Set based on your requirements
-        email_verified: true // Set based on your requirements
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${mgmtToken}`,
-          'Content-Type': 'application/json'
-        }
-      }
-    );
-    return response.data;
+    // Perform Auth0 login.
+    const auth0Data = await auth0Login(email, password);
+
+    // Ensure that we received a valid user id from Auth0.
+    if (!auth0Data.user_id) {
+      throw new Error("Auth0 did not return a valid user_id");
+    }
+
+    // Optionally, ensure a corresponding local record exists.
+    // Depending on your application logic, you might want to create a local user if one does not exist.
+    let localUser = await getUser(auth0Data.user_id);
+    if (!localUser) {
+      // In case the user record is missing, you might choose to create it.
+      localUser = await createUser(auth0Data.user_id);
+    }
+
+    return {
+      accessToken: auth0Data.accessToken
+    };
   } catch (error: any) {
-    const axiosError = error as AxiosError;
-    const errorDescription = axiosError.message;
-    throw new Error(
-      errorDescription || 
-      'User registration failed. Please try again.'
-    );
+    if (error instanceof AxiosError) {
+      console.error("Login error:", error.response?.data || error.message);
+    } else {
+      console.error("Login error:", error);
+    }
+    throw error;
   }
 };

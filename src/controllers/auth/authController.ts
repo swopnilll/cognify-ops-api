@@ -1,17 +1,17 @@
-// controllers/authController.ts
+// src/controllers/auth/authController.ts
 import { Request, Response } from 'express';
 import { login, signup } from '../../services/auth/authService';
-
 
 export const loginController = async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body;
     const result = await login(email, password);
+
+    // Access tokens from the nested auth0Data property
     res.status(200).json({
-      access_token: result.access_token,
-      refresh_token: result.refresh_token,
+      access_token: result.accessToken
     });
-  } catch (error) {
+  } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
 };
@@ -21,7 +21,7 @@ export const signupController = async (req: Request, res: Response) => {
     const { email, password } = req.body;
     const user = await signup(email, password);
     res.status(201).json(user);
-  } catch (error) {
+  } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
 };
