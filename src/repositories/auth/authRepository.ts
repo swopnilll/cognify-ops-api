@@ -70,8 +70,7 @@ export const auth0Login = async (email: string, password: string) => {
 
     return {
       accessToken,
-      user_id: userProfile.sub,
-      email: userProfile.email,
+      userProfile
     };
   } catch (error) {
     const axiosError = error as AxiosError;

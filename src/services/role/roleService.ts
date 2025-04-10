@@ -1,6 +1,7 @@
 import { Role } from '@prisma/client';
 
-import { getAllRoles } from '../../repositories/role/roleRepository';
+import { getAllRoles, getRoleId } from '../../repositories/role/roleRepository';
+import logger from '../../utils/logger';
 
 /**
  * Service function to retrieve all roles.
@@ -16,3 +17,14 @@ export const fetchRoles = async (): Promise<Role[]> => {
     throw error;
   }
 };
+
+export const fetchRoleIdByRoleName = async (roleName): Promise<number> => {
+  try {
+    const roles = await getRoleId(roleName);
+    return roles;
+  } catch (error) {
+    logger.error('Role Service Error:', error);
+    throw error;
+  }
+};
+

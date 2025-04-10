@@ -1,10 +1,11 @@
 import { Router, Request, Response } from 'express';
+import {  createProjectController, getProjectsController } from '../../controllers/projects/projectController';
+import { handleValidationErrors, validateCreateProjectPayload } from '../../middleware/project/validateCreateProjectPayload';
 
 const projectRoutes = Router();
 
-projectRoutes.get('/', (req: Request, res: Response) => {
-  res.status(200).json({
-    message: 'Project routes are working'});
-});         
+projectRoutes.get('/', getProjectsController);
+
+projectRoutes.post('/', validateCreateProjectPayload, handleValidationErrors, createProjectController);        
 
 export default projectRoutes;

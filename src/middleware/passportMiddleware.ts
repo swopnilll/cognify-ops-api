@@ -1,8 +1,9 @@
 import passport from "passport";
-import jwt from "jsonwebtoken"; // Add this
+import jwt from "jsonwebtoken";
 import { ExtractJwt, Strategy as JwtStrategy } from "passport-jwt";
 import jwksClient from "jwks-rsa";
 import { getAuth0Config } from "../config/auth0";
+import logger from "../utils/logger";
 
 const auth0Config = getAuth0Config();
 
@@ -15,52 +16,45 @@ const configurePassport = () => {
     new JwtStrategy(
       {
         jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
-        audience: auth0Config.apiIdentifier, // Must match Auth0 API Identifier
-        issuer: `https://${auth0Config.domain}/`, // Trailing slash required
+        audience: auth0Config.apiIdentifier,
+        issuer: `https://${auth0Config.domain}/`,
         algorithms: ["RS256"],
         secretOrKeyProvider: (req, rawJwt, done) => {
-          console.log("rawJwt from request header:", rawJwt); // Log the token here
+          logger.info(`JWT authentication attempt with token: ${rawJwt?.substring(0, 15)}...`);
 
-          // ADD THESE LINES:
-          console.log("Attempting jwt.decode right now with token:", rawJwt);
-          console.log("Type of token before decode:", typeof rawJwt);
-
-          // Decode JWT without verifying to access header
-          const decoded = jwt.decode(rawJwt, { complete: true });
-
-          if (!decoded) {
-              console.error('JWT could not be decoded JUST NOW. Check the format/type.'); // Modified error message
-              return done(new Error('JWT decoding failed just now'));
-          }
-
-          console.log("Decoded JWT:", decoded); // Log decoded JWT to inspect the payload and header
-
-          // Ensure the JWT header contains 'kid' (Key ID)
-          if (!decoded?.header?.kid) {
-            console.error('JWT header missing "kid" field.');
-            return done(new Error('Missing "kid" in token header'));
-          }
-
-          // Retrieve the public key using the kid (Key ID) from Auth0
-          client.getSigningKey(decoded.header.kid, (err, key) => {
-            if (err) {
-              console.error("Error fetching the signing key from Auth0:", err);
-              return done(err);
+          try {
+            const decoded = jwt.decode(rawJwt, { complete: true });
+            if (!decoded) {
+              logger.error('JWT decoding failed', { tokenSnippet: rawJwt?.substring(0, 15) });
+              return done(new Error('Invalid token format'));
             }
 
-            // Log the signing key for debugging
-            console.log("Signing Key:", key);
+            logger.debug('JWT header decoded', { header: decoded.header });
+            
+            if (!decoded.header.kid) {
+              logger.error('Missing key ID in JWT header');
+              return done(new Error('Invalid token header'));
+            }
 
-            // Provide the public key to validate the JWT
-            done(null, key.getPublicKey());
-          });
+            client.getSigningKey(decoded.header.kid, (err, key) => {
+              if (err) {
+                logger.error('Auth0 JWKS retrieval failed', { error: err });
+                return done(err);
+              }
+              logger.debug('Successfully retrieved signing key', { keyId: decoded.header.kid });
+              done(null, key.getPublicKey());
+            });
+          } catch (error) {
+            logger.error('JWT processing error', { error });
+            done(error);
+          }
         },
       },
       (jwtPayload, done) => {
-        // Log the decoded JWT payload
-        console.log("Decoded JWT Payload:", jwtPayload);
-
-        // Continue with the JWT validation
+        logger.info('JWT validation successful', { 
+          userId: jwtPayload.sub,
+          scope: jwtPayload.scope 
+        });
         done(null, jwtPayload);
       }
     )

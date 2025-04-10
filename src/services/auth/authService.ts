@@ -54,20 +54,21 @@ export const login = async (email: string, password: string) => {
     const auth0Data = await auth0Login(email, password);
 
     // Ensure that we received a valid user id from Auth0.
-    if (!auth0Data.user_id) {
+    if (!auth0Data.userProfile) {
       throw new Error("Auth0 did not return a valid user_id");
     }
 
     // Optionally, ensure a corresponding local record exists.
     // Depending on your application logic, you might want to create a local user if one does not exist.
-    let localUser = await getUser(auth0Data.user_id);
+    let localUser = await getUser(auth0Data.userProfile.sub);
     if (!localUser) {
       // In case the user record is missing, you might choose to create it.
-      localUser = await createUser(auth0Data.user_id);
+      localUser = await createUser(auth0Data.userProfile.sub);
     }
 
     return {
-      accessToken: auth0Data.accessToken
+      accessToken: auth0Data.accessToken,
+      user: auth0Data.userProfile
     };
   } catch (error: any) {
     if (error instanceof AxiosError) {

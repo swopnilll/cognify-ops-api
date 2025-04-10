@@ -6,8 +6,11 @@ import passport from 'passport';
 import { profileController } from '../controllers/auth/authController';
 import { getRolesController } from '../controllers/role/roleController';
 import projectRoutes from './projects/projectRoutes';
+import healthRoutes from './healthRoutes';
 
 const router = Router();
+
+router.use('/health', healthRoutes);
 
 // Public Routes
 router.use('/auth', authRoutes);
