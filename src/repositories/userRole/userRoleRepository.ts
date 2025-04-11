@@ -1,5 +1,30 @@
+import { Prisma } from "@prisma/client";
 import prisma from "../../db/prismaClient";
 import logger from "../../utils/logger";
+
+export const insertUserRole = async (
+  user_id: string,
+  role_id: number,
+  project_id: number,
+  txClient: Prisma.TransactionClient = prisma
+) => {
+  try {
+    const newUserRole = await txClient.user_Role.create({
+      data: {
+        user_id,
+        role_id,
+        project_id,
+        updated_at: new Date(),
+      },
+    });
+
+    logger.info(`New user role created for user ${user_id}, role ${role_id}, project ${project_id}`);
+    return newUserRole;
+  } catch (error) {
+    logger.error(`Error creating user role for user ${user_id}, role ${role_id}, project ${project_id}: ${error.message}`);
+    throw new Error(`Error creating user role: ${error.message}`);
+  }
+};
 
 // Find User Role by user_id, role_id, and project_id
 export const findUserRole = async (user_id: string, role_id: number, project_id: number) => {
@@ -59,25 +84,5 @@ export const findUserRolesByUser = async (user_id: string) => {
   } catch (error) {
     logger.error(`Error fetching user roles for user ${user_id}: ${error.message}`);
     throw new Error(`Error fetching user roles: ${error.message}`);
-  }
-};
-
-// Insert a new User Role
-export const insertUserRole = async (user_id: string, role_id: number, project_id: number) => {
-  try {
-    const newUserRole = await prisma.user_Role.create({
-      data: {
-        user_id,
-        role_id,
-        project_id,
-        updated_at: new Date(),
-      },
-    });
-
-    logger.info(`New user role created for user ${user_id}, role ${role_id}, project ${project_id}`);
-    return newUserRole;
-  } catch (error) {
-    logger.error(`Error creating user role for user ${user_id}, role ${role_id}, project ${project_id}: ${error.message}`);
-    throw new Error(`Error creating user role: ${error.message}`);
   }
 };

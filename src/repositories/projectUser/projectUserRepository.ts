@@ -1,5 +1,29 @@
+import { Prisma } from "@prisma/client";
+
 import prisma from "../../db/prismaClient";
 import logger from "../../utils/logger";
+
+export const insertProjectUser = async (
+  project_id: number,
+  user_id: string,
+  txClient: Prisma.TransactionClient = prisma
+) => {
+  try {
+    const newProjectUser = await txClient.project_User.create({
+      data: {
+        project_id,
+        user_id,
+        updated_at: new Date(),
+      },
+    });
+
+    logger.info(`New project user created for project ${project_id}, user ${user_id}`);
+    return newProjectUser;
+  } catch (error) {
+    logger.error(`Error creating project user for project ${project_id}, user ${user_id}: ${error.message}`);
+    throw new Error(`Error creating project user: ${error.message}`);
+  }
+};
 
 // Find Project User by project_id and user_id
 export const findProjectUser = async (project_id: number, user_id: string) => {
@@ -58,25 +82,6 @@ export const findProjectUsersByUser = async (user_id: string) => {
   } catch (error) {
     logger.error(`Error fetching projects for user ${user_id}: ${error.message}`);
     throw new Error(`Error fetching project users: ${error.message}`);
-  }
-};
-
-// Insert a new Project User
-export const insertProjectUser = async (project_id: number, user_id: string) => {
-  try {
-    const newProjectUser = await prisma.project_User.create({
-      data: {
-        project_id,
-        user_id,
-        updated_at: new Date(),
-      },
-    });
-
-    logger.info(`New project user created for project ${project_id}, user ${user_id}`);
-    return newProjectUser;
-  } catch (error) {
-    logger.error(`Error creating project user for project ${project_id}, user ${user_id}: ${error.message}`);
-    throw new Error(`Error creating project user: ${error.message}`);
   }
 };
 
