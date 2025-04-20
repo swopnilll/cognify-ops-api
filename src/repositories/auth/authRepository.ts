@@ -4,6 +4,30 @@ import axios, { AxiosError } from "axios";
 import { User } from "@prisma/client";
 import prisma from "../../db/prismaClient";
 import { getAuth0Config } from "../../config/auth0";
+import logger from "../../utils/logger";
+
+// --- Result Type ---
+type Ok<T> = { ok: true; value: T };
+type Err<E> = { ok: false; error: E };
+type Result<T, E> = Ok<T> | Err<E>;
+
+// Helper functions for creating Result objects
+const ok = <T>(value: T): Ok<T> => ({ ok: true, value });
+const err = <E>(error: E): Err<E> => ({ ok: false, error });
+
+// --- Specific Error Types ---
+type Auth0SignupError =
+  | { type: "TokenRetrievalFailed"; cause: unknown }
+  | { type: "UserAlreadyExists"; email: string; message: string }
+  | { type: "Auth0ApiError"; status?: number; data?: any; message: string }
+  | { type: "NetworkError"; message: string }
+  | { type: "UnknownError"; cause: unknown };
+
+// --- Auth0 User Data Type
+interface Auth0User {
+  user_id: string;
+  email: string;
+}
 
 const auth0Config = getAuth0Config();
 
@@ -19,6 +43,18 @@ const getManagementToken = async (): Promise<string> => {
     { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
   );
   return data.access_token;
+};
+
+const tryGetManagementToken = async (): Promise<
+  Result<string, Auth0SignupError>
+> => {
+  try {
+    const token = await getManagementToken();
+    return ok(token);
+  } catch (error) {
+    logger.error("Failed to retrieve Auth0 Management Token:", error);
+    return err({ type: "TokenRetrievalFailed", cause: error });
+  }
 };
 
 /*========================================
@@ -70,7 +106,7 @@ export const auth0Login = async (email: string, password: string) => {
 
     return {
       accessToken,
-      userProfile
+      userProfile,
     };
   } catch (error) {
     const axiosError = error as AxiosError;
@@ -92,32 +128,95 @@ export const auth0Login = async (email: string, password: string) => {
  * @param password - The user's password.
  * @returns The Auth0 signup response data.
  */
-export const auth0Signup = async (email: string, password: string) => {
+export const auth0Signup = async (
+  email: string,
+  password: string
+): Promise<Result<Auth0User, Auth0SignupError>> => {
+  const tokenResult = await tryGetManagementToken();
+
+  if (!tokenResult.ok) {
+    return err({
+      type: "TokenRetrievalFailed",
+      cause: (tokenResult as Err<Auth0SignupError>).error,
+    });
+  }
+
+  const mgmtToken = tokenResult.value;
+  logger.info("Management Token Retrieved:", mgmtToken);
+
+  // Prepare request data (pure transformation)
+  const url = `https://${auth0Config.domain}/api/v2/users`;
+
+  const data = {
+    email,
+    password,
+    connection: "Username-Password-Authentication",
+    verify_email: false, // Change as needed
+    email_verified: true, // Change as needed - consider security implications
+  };
+
+  const config = {
+    headers: {
+      Authorization: `Bearer ${mgmtToken}`,
+      "Content-Type": "application/json",
+    },
+  };
+
+  //  Execute the side effect (API call) and map result/error
   try {
-    const mgmtToken = await getManagementToken();
-    const response = await axios.post(
-      `https://${auth0Config.domain}/api/v2/users`,
-      {
-        email,
-        password,
-        connection: "Username-Password-Authentication",
-        verify_email: false, // Change as needed
-        email_verified: true, // Change as needed
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${mgmtToken}`,
-          "Content-Type": "application/json",
-        },
-      }
-    );
-    return response.data;
+    logger.info(`Attempting Auth0 user creation for: ${email}`); // Side effect: Logging
+    const response = await axios.post<Auth0User>(url, data, config); // Side effect: API Call
+    logger.info("Auth0 Signup Successful:", response.data); // Side effect: Logging
+
+    return ok(response.data);
   } catch (error: any) {
-    const axiosError = error as AxiosError;
-    const errorDescription = axiosError.message;
-    throw new Error(
-      errorDescription || "User registration failed. Please try again."
-    );
+    logger.error("Auth0 Signup Error occurred"); // Side effect: Logging
+
+    if (axios.isAxiosError(error)) {
+      const axiosError = error as AxiosError<any>; // Use any for generic Auth0 error data
+      const status = axiosError.response?.status;
+      const responseData = axiosError.response?.data;
+      const errorMessage = axiosError.message;
+
+      logger.error(
+        `Auth0 Axios Error: Status=${status}, Message=${errorMessage}`,
+        responseData
+      ); // Side effect: Logging
+
+      if (status === 409) {
+        // Specific, known error -> map to specific Err type
+
+        return err({
+          type: "UserAlreadyExists",
+          email: email,
+          message:
+            responseData?.message || `User with email ${email} already exists.`,
+        });
+      } else if (status) {
+        // Other API error with a status code
+
+        return err({
+          type: "Auth0ApiError",
+          status: status,
+          data: responseData,
+          message:
+            responseData?.message ||
+            errorMessage ||
+            `Auth0 API request failed with status ${status}.`,
+        });
+      } else {
+        // Network error or request setup error
+        return err({
+          type: "NetworkError",
+          message: errorMessage || "Network error during Auth0 signup request.",
+        });
+      }
+    } else {
+      // Non-Axios error
+
+      logger.error("Non-Axios Error during Auth0 Signup:", error); // Side effect: Logging
+      return err({ type: "UnknownError", cause: error });
+    }
   }
 };
 
