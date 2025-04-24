@@ -1,6 +1,8 @@
 import {
   createFullProject,
   findAllProjects,
+  findProjectsByUserId,
+  updateProject,
 } from "../../repositories/project/projectRepository";
 import { fetchRoleIdByRoleName } from "../role/roleService";
 
@@ -55,3 +57,33 @@ export const getAllProjects = async () => {
     );
   }
 };
+
+export const getProjectsForUser = async (userId: string) => {
+  try {
+    const projects = await findProjectsByUserId(userId);
+    if (!projects || projects.length === 0) {
+      logger.warn(`No projects found for user ID ${userId} in the service layer.`);
+    }
+    return projects;
+  } catch (error) {
+    logger.error(
+      `Error fetching projects for user ID ${userId} in service layer: ${error.message}`
+    );
+    throw new Error(
+      `Error fetching projects for user in service layer: ${error.message}`
+    );
+  }
+}
+
+export const updateProjectService = async (
+  projectId: number,
+  data: { name?: string; description?: string; project_key?: string }
+) => {
+  try {
+    return await updateProject(projectId, data);
+  } catch (error) {
+    logger.error(`Error updating project in service layer: ${error.message}`);
+    throw new Error(`Error updating project: ${error.message}`);
+  }
+};
+
