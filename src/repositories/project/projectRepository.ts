@@ -1,7 +1,7 @@
 import prisma from "../../db/prismaClient";
 import logger from "../../utils/logger";
-import { insertProjectUser } from "../projectUser/projectUserRepository";
-import { findUserRolesByUser, insertUserRole } from "../userRole/userRoleRepository";
+import { checkIfUserExistsInProjectUser, insertProjectUser } from "../projectUser/projectUserRepository";
+import { checkIfUserExistsInProject, findUserRolesByUser, insertUserRole } from "../userRole/userRoleRepository";
 
 type CreateProjectInput = {
   userId: string;
@@ -188,5 +188,32 @@ export const updateProject = async (projectId: number, data: UpdateProjectInput)
   }
 };
 
+export const addUserToProjectRepository = async (data, projectId: number) => {
+  const { userId } = data;
+  const roleId = 3; // Can be dynamic later
+
+  try {
+    const roleAlreadyExists = await checkIfUserExistsInProject(userId, projectId);
+    if (roleAlreadyExists) {
+      return { status: false, reason: "User already assigned role in this project" };
+    }
+
+    const userAlreadyExistsInProjectUser = await checkIfUserExistsInProjectUser(projectId, userId);
+    if (userAlreadyExistsInProjectUser) {
+      return { status: false, reason: "User already added to this project" };
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await insertUserRole(userId, roleId, projectId, tx);
+      await insertProjectUser(projectId, userId, tx);
+    });
+
+    return { status: true, reason: "User successfully added to project" };
+
+  } catch (error) {
+    logger.error(`Repository error adding user to project: ${error.message}`);
+    throw new Error(`Repository error: ${error.message}`);
+  }
+};
 
 

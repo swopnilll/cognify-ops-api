@@ -107,3 +107,25 @@ export const updateProjectUserTimestamp = async (project_id: number, user_id: st
     throw new Error(`Error updating project user timestamp: ${error.message}`);
   }
 };
+
+export const checkIfUserExistsInProjectUser = async (project_id: number, user_id: string) => {
+  try {
+    const projectUser = await prisma.project_User.findFirst({
+      where: {
+        project_id,
+        user_id,
+      },
+    });
+
+    if (projectUser) {
+      logger.info(`User ${user_id} already exists in project ${project_id} (project_User table)`);
+      return true;
+    } else {
+      logger.info(`User ${user_id} does not exist in project ${project_id} (project_User table)`);
+      return false;
+    }
+  } catch (error) {
+    logger.error(`Error checking project user existence for project ${project_id}, user ${user_id}: ${error.message}`);
+    throw new Error(`Error checking project user existence: ${error.message}`);
+  }
+};

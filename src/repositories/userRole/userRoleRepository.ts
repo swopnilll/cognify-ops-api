@@ -86,3 +86,25 @@ export const findUserRolesByUser = async (user_id: string) => {
     throw new Error(`Error fetching user roles: ${error.message}`);
   }
 };
+
+export const checkIfUserExistsInProject = async (user_id: string, project_id: number) => {
+  try {
+    const userRole = await prisma.user_Role.findFirst({
+      where: {
+        user_id,
+        project_id,
+      },
+    });
+
+    if (userRole) {
+      logger.info(`User ${user_id} already exists in project ${project_id}`);
+      return true;
+    } else {
+      logger.info(`User ${user_id} does not exist in project ${project_id}`);
+      return false;
+    }
+  } catch (error) {
+    logger.error(`Error checking user existence in project ${project_id} for user ${user_id}: ${error.message}`);
+    throw new Error(`Error checking user existence: ${error.message}`);
+  }
+};

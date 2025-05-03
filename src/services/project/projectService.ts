@@ -1,4 +1,5 @@
 import {
+  addUserToProjectRepository,
   createFullProject,
   findAllProjects,
   findProjectsByUserId,
@@ -7,7 +8,8 @@ import {
 import { fetchRoleIdByRoleName } from "../role/roleService";
 
 import logger from "../../utils/logger";
-import { getAllAuth0Users } from "../../repositories/auth/authRepository";
+import { getAllAuth0Users, getAuth0UsersByIds } from "../../repositories/auth/authRepository";
+import { findUserRolesByProject } from "../../repositories/userRole/userRoleRepository";
 
 type CreateProjectInput = {
   userId: string;
@@ -16,6 +18,11 @@ type CreateProjectInput = {
   user_id: string;
   project_key: string;
 };
+
+type AddUserToProjectPayload = {
+  userId: string;
+  userRoleId: string;
+}
 
 export const createProject = async (data: CreateProjectInput) => {
   try {
@@ -105,5 +112,45 @@ export const getAllAvailableUsersListService = async () => {
   } catch (error) {
     logger.error(`Error getting all users in service layer: ${error.message}`);
     throw new Error(`Error getting users ${error.message}`);
+  }
+};
+
+export const addUserToProjectSevice = async (details, projectId) => {
+  try{
+    return await addUserToProjectRepository(details, projectId);
+  } catch(error){
+    logger.error(`Service error adding user to project: ${error.message}`);
+    throw new Error(`Error adding users ${error.message}`);
+  }
+}
+
+export const getUsersForProjectService = async (projectId) => {
+  try {
+    const users = await findUserRolesByProject(projectId);
+
+    if (users.length === 0) {
+      return []; // No users in project, return empty array early
+    }
+
+    const userIds = users.map(user => user.user_id);
+
+    const userDetails = await getAuth0UsersByIds(userIds);
+
+    // Create a map from user_id to role_id for quick lookup
+    const roleMap = new Map();
+    users.forEach(user => {
+      roleMap.set(user.user_id, user.role_id);
+    });
+
+    // Combine Auth0 user info + role_id
+    const combinedUsers = userDetails.map(user => ({
+      ...user,
+      role_id: roleMap.get(user.user_id) ?? null, // Add role_id, null if not found (shouldn't happen)
+    }));
+
+    return combinedUsers;
+  } catch (error) {
+    logger.error(`Error fetching users for project in service layer: ${error.message}`);
+    throw new Error(`Error fetching users: ${error.message}`);
   }
 };

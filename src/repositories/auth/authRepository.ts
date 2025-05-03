@@ -354,3 +354,48 @@ export const getAllAuth0Users = async (): Promise<Auth0User[]> => {
     throw new Error("Failed to fetch users from Auth0");
   }
 };
+
+export const getAuth0UsersByIds = async (userIds: string[]): Promise<Auth0User[]> => {
+  const tokenResult = await tryGetManagementToken();
+
+  if (!tokenResult.ok) {
+    throw new Error("Failed to retrieve Auth0 token");
+  }
+
+  const mgmtToken = tokenResult.value;
+
+  const baseUrl = `https://${auth0Config.domain}/api/v2/users`;
+
+  try {
+    const userRequests = userIds.map((userId) =>
+      axios.get<Auth0User>(`${baseUrl}/${encodeURIComponent(userId)}`, {
+        headers: {
+          Authorization: `Bearer ${mgmtToken}`,
+        },
+      })
+    );
+
+    const responses = await Promise.allSettled(userRequests);
+
+    const users: Auth0User[] = [];
+    const failedIds: string[] = [];
+
+    responses.forEach((result, index) => {
+      if (result.status === 'fulfilled') {
+        users.push(result.value.data);
+      } else {
+        logger.warn(`Failed to fetch user ${userIds[index]}: ${result.reason}`);
+        failedIds.push(userIds[index]);
+      }
+    });
+
+    if (failedIds.length > 0) {
+      logger.warn(`Some users could not be fetched: ${failedIds.join(', ')}`);
+    }
+
+    return users;
+  } catch (error) {
+    logger.error("Error fetching users from Auth0", error);
+    throw new Error("Failed to fetch users from Auth0");
+  }
+};

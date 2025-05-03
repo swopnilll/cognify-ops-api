@@ -1,5 +1,5 @@
 import { Request, RequestHandler, Response } from "express";
-import { createProject, getAllAvailableUsersListService, getAllProjects, getProjectsForUser, updateProjectService } from "../../services/project/projectService";
+import { addUserToProjectSevice, createProject, getAllAvailableUsersListService, getAllProjects, getProjectsForUser, getUsersForProjectService, updateProjectService } from "../../services/project/projectService";
 import logger from "../../utils/logger";
 
 export const createProjectController: RequestHandler = async (req: Request, res: Response): Promise<void> => {
@@ -61,6 +61,43 @@ export const getAllAvailableUsersListController: RequestHandler = async (req: Re
 
     res.status(200).json(users);
   } catch(error){
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
+}
+
+export const addUserToProjectController: RequestHandler = async (req: Request, res: Response) => {
+  const projectId = parseInt(req.params.projectId);
+  const { userId } = req.body;
+
+  if (isNaN(projectId) || !userId) {
+     res.status(400).json({ message: "Invalid projectId or userId" });
+  }
+
+  try {
+    const result = await addUserToProjectSevice({ userId }, projectId);
+
+    if (result.status) {
+       res.status(201).json({ message: result.reason });
+    } else {
+       res.status(409).json({ message: result.reason }); // 409 Conflict if user already exists
+    }
+
+  } catch (error) {
+    logger.error(`Controller error: ${error.message}`);
+     res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+export const getUsersForProjectController: RequestHandler = async (req: Request, res: Response) => {
+  try{
+    const projectId = Number(req.params.projectId);
+    console.log({projectId});
+
+    const users = await getUsersForProjectService(projectId);
+
+    res.status(200).json(users);
+  }catch(error){
     console.error(error);
     res.status(500).json({ message: "Server error" });
   }
