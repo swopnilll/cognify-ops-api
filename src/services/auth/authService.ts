@@ -5,6 +5,7 @@ import {
   auth0Login,
   createUser,
   getUser,
+  updateAuth0User,
 } from "../../repositories/auth/authRepository";
 import logger from "../../utils/logger";
 
@@ -88,4 +89,32 @@ export const login = async (email: string, password: string) => {
     }
     throw error;
   }
+};
+
+export const updateUserProfile = async (
+  userId: string,
+  updates: {
+    email?: string;
+    password?: string;
+    fullName?: string;
+    picture?: string;
+  }
+) => {
+  const payload: any = {
+    ...(updates.email && { email: updates.email }),
+    ...(updates.password && { password: updates.password }),
+    ...(updates.fullName && { user_metadata: { fullName: updates.fullName } }),
+    ...(updates.picture && { picture: updates.picture }),
+  };
+
+  const result = await updateAuth0User(userId, payload);
+
+  if (!result.ok) {
+    if ('error' in result) {
+      throw new Error(JSON.stringify(result.error));
+    }
+    throw new Error("Unknown error occurred while updating the user profile.");
+  }
+
+  return result.value;
 };

@@ -8,6 +8,7 @@ import { getRolesController } from '../controllers/role/roleController';
 import projectRoutes from './projects/projectRoutes';
 import healthRoutes from './healthRoutes';
 import statusRoutes from './status/statusRoutes';
+import ticketRoutes from './tickets/ticketRoutes';
 
 const router = Router();
 
@@ -27,5 +28,7 @@ router.get('/roles', getRolesController);
 router.use('/projects', projectRoutes);
 
 router.use('/status', statusRoutes);
+
+router.use("/tickets", ticketRoutes)
 
 export default router;

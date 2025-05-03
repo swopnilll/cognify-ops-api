@@ -1,6 +1,7 @@
 import { Request, RequestHandler, Response } from "express";
 import { addUsersToProjectService, addUserToProjectSevice, createProject, getAllAvailableUsersListService, getAllProjects, getProjectsForUser, getUsersForProjectService, updateProjectService } from "../../services/project/projectService";
 import logger from "../../utils/logger";
+import { HttpError } from "../../utils/httpError";
 
 export const createProjectController: RequestHandler = async (req: Request, res: Response): Promise<void> => {
   try {

@@ -231,6 +231,51 @@ export const auth0Signup = async (
   }
 };
 
+export const updateAuth0User = async (
+  userId: string,
+  updates: {
+    email?: string;
+    password?: string;
+    user_metadata?: { fullName?: string };
+    picture?: string;
+  }
+): Promise<Result<Auth0User, Auth0SignupError>> => {
+  const tokenResult = await tryGetManagementToken();
+
+  if (!tokenResult.ok) {
+    return err({
+      type: "TokenRetrievalFailed",
+      cause: (tokenResult as Err<Auth0SignupError>).error,
+    });
+  }
+
+  const mgmtToken = tokenResult.value;
+  const url = `https://${auth0Config.domain}/api/v2/users/${encodeURIComponent(userId)}`;
+
+  const config = {
+    headers: {
+      Authorization: `Bearer ${mgmtToken}`,
+      "Content-Type": "application/json",
+    },
+  };
+
+  try {
+    const response = await axios.patch<Auth0User>(url, updates, config);
+    return ok(response.data);
+  } catch (error: any) {
+    if (axios.isAxiosError(error)) {
+      const status = error.response?.status;
+      return err({
+        type: "Auth0ApiError",
+        status,
+        data: error.response?.data,
+        message: error.message,
+      });
+    }
+    return err({ type: "UnknownError", cause: error });
+  }
+};
+
 /*=====  End of Auth0 Operations  ======*/
 
 /*========================================

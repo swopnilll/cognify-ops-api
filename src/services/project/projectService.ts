@@ -11,6 +11,8 @@ import { fetchRoleIdByRoleName } from "../role/roleService";
 import logger from "../../utils/logger";
 import { getAllAuth0Users, getAuth0UsersByIds } from "../../repositories/auth/authRepository";
 import { findUserRolesByProject } from "../../repositories/userRole/userRoleRepository";
+import { createTicketAndAssignToUserRepo } from "../../repositories/ticket/ticketRepository";
+import { HttpError } from "../../utils/httpError";
 
 type CreateProjectInput = {
   userId: string;

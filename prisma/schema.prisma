@@ -7,11 +7,12 @@ datasource db {
   url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
 }
+
 model Role {
-  role_id    Int       @id @default(autoincrement())
-  role_name  String    @unique
-  created_at DateTime  @default(now())
-  updated_at DateTime  @updatedAt
+  role_id    Int         @id @default(autoincrement())
+  role_name  String      @unique
+  created_at DateTime    @default(now())
+  updated_at DateTime    @updatedAt
   user_roles User_Role[]
 }
 
@@ -31,39 +32,43 @@ model User_Role {
 }
 
 model Project {
-  project_id  Int          @id @default(autoincrement())
-  name        String
-  description String?
-  project_key String       // New Column added after first migration init 20250407100055_init
-  created_by  String       // Foreign key to User (Auth0 user_id)
-  created_at  DateTime     @default(now())
-  updated_at  DateTime     @updatedAt
-  tickets     Ticket[]
+  project_id    Int            @id @default(autoincrement())
+  name          String
+  description   String?
+  project_key   String // New Column added after first migration init 20250407100055_init
+  created_by    String // Foreign key to User (Auth0 user_id)
+  created_at    DateTime       @default(now())
+  updated_at    DateTime       @updatedAt
+  tickets       Ticket[]
   project_users Project_User[]
-  user        User         @relation("ProjectCreator", fields: [created_by], references: [user_id], onDelete: Cascade) // Explicit relation name
-  user_roles  User_Role[]
+  user          User           @relation("ProjectCreator", fields: [created_by], references: [user_id], onDelete: Cascade) // Explicit relation name
+  user_roles    User_Role[]
 }
 
 model Ticket {
-  ticket_id   Int        @id @default(autoincrement())
+  ticket_id   Int      @id @default(autoincrement())
   project_id  Int
   name        String
   description String?
-  created_by  String     // Foreign key to User (Auth0 user_id)
-  status_id   Int?       // Foreign key to Status
-  created_at  DateTime   @default(now())
-  updated_at  DateTime   @updatedAt
-  project     Project    @relation(fields: [project_id], references: [project_id], onDelete: Cascade)
-  creator     User       @relation("CreatedTickets", fields: [created_by], references: [user_id], onDelete: Cascade)
-  status      Status?    @relation("TicketStatus", fields: [status_id], references: [status_id])
+  created_by  String // Foreign key to User (Auth0 user_id)
+  status_id   Int? // Foreign key to Status
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+  project     Project  @relation(fields: [project_id], references: [project_id], onDelete: Cascade)
+  creator     User     @relation("CreatedTickets", fields: [created_by], references: [user_id], onDelete: Cascade)
+  status      Status?  @relation("TicketStatus", fields: [status_id], references: [status_id])
+
+  Ticket_Assignment Ticket_Assignment[]
 }
 
 model User {
-  user_id             String       @id
-  created_projects    Project[]    @relation("ProjectCreator") // Link to the same relation name
-  created_tickets     Ticket[]     @relation("CreatedTickets")
-  user_roles          User_Role[]
+  user_id                String         @id
+  created_projects       Project[]      @relation("ProjectCreator") // Link to the same relation name
+  created_tickets        Ticket[]       @relation("CreatedTickets")
+  user_roles             User_Role[]
   participating_projects Project_User[] @relation("UserToProject")
+
+  Ticket_Assignment Ticket_Assignment[]
 }
 
 model Project_User {
@@ -79,9 +84,19 @@ model Project_User {
 }
 
 model Status {
-  status_id  Int       @id @default(autoincrement())
-  name       String    @unique
-  created_at DateTime  @default(now())
-  updated_at DateTime  @updatedAt
-  tickets    Ticket[]  @relation("TicketStatus")
+  status_id  Int      @id @default(autoincrement())
+  name       String   @unique
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  tickets    Ticket[] @relation("TicketStatus")
+}
+
+model Ticket_Assignment {
+  ticket_id Int    @id
+  user_id   String
+
+  ticket Ticket @relation(fields: [ticket_id], references: [ticket_id], onDelete: Cascade)
+  user   User   @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+
+  @@index([user_id])
 }
