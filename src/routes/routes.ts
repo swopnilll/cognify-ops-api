@@ -7,6 +7,7 @@ import { profileController } from '../controllers/auth/authController';
 import { getRolesController } from '../controllers/role/roleController';
 import projectRoutes from './projects/projectRoutes';
 import healthRoutes from './healthRoutes';
+import statusRoutes from './status/statusRoutes';
 
 const router = Router();
 
@@ -24,5 +25,7 @@ router.use(passport.authenticate('jwt', { session: false }));
 router.get('/roles', getRolesController);
 
 router.use('/projects', projectRoutes);
+
+router.use('/status', statusRoutes);
 
 export default router;

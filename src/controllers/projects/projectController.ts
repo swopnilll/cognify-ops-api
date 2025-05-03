@@ -1,5 +1,5 @@
 import { Request, RequestHandler, Response } from "express";
-import { createProject, getAllProjects, getProjectsForUser, updateProjectService } from "../../services/project/projectService";
+import { createProject, getAllAvailableUsersListService, getAllProjects, getProjectsForUser, updateProjectService } from "../../services/project/projectService";
 import logger from "../../utils/logger";
 
 export const createProjectController: RequestHandler = async (req: Request, res: Response): Promise<void> => {
@@ -54,3 +54,14 @@ export const updateProjectController: RequestHandler = async (req: Request, res:
     res.status(500).json({ message: "Server error" });
   }
 };
+
+export const getAllAvailableUsersListController: RequestHandler = async (req: Request, res: Response) => {
+  try {
+    const users = await getAllAvailableUsersListService();
+
+    res.status(200).json(users);
+  } catch(error){
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
+}

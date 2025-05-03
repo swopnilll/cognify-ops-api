@@ -16,8 +16,8 @@ export const loginController = async (req: Request, res: Response) => {
 
 export const signupController = async (req: Request, res: Response) => {
   try {
-    const { email, password } = req.body;
-    const user = await signup(email, password);
+    const { email, password, fullName } = req.body;
+    const user = await signup(email, password, fullName);
     res.status(201).json(user);
   } catch (error: any) {
     res.status(500).json({ error: error.message });

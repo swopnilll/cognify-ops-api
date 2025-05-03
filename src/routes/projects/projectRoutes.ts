@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import {  createProjectController, getProjectsController, getProjectsForUserController, updateProjectController } from '../../controllers/projects/projectController';
+import {  createProjectController, getAllAvailableUsersListController, getProjectsController, getProjectsForUserController, updateProjectController } from '../../controllers/projects/projectController';
 import { handleValidationErrors, validateCreateProjectPayload } from '../../middleware/project/validateCreateProjectPayload';
 import { updateProject } from '../../repositories/project/projectRepository';
 
@@ -12,6 +12,8 @@ projectRoutes.get('/:userId', getProjectsForUserController);
 projectRoutes.post('/', validateCreateProjectPayload, handleValidationErrors, createProjectController);  
 
 projectRoutes.patch('/:projectId', updateProjectController);
+
+projectRoutes.get('/users/available', getAllAvailableUsersListController);
 
 
 export default projectRoutes;

@@ -7,6 +7,7 @@ import {
 import { fetchRoleIdByRoleName } from "../role/roleService";
 
 import logger from "../../utils/logger";
+import { getAllAuth0Users } from "../../repositories/auth/authRepository";
 
 type CreateProjectInput = {
   userId: string;
@@ -87,3 +88,22 @@ export const updateProjectService = async (
   }
 };
 
+export const getAllAvailableUsersListService = async () => {
+  try {
+    const usersFromAuth0 = await getAllAuth0Users();
+
+    const filteredUsers = usersFromAuth0.map(user => ({
+      email: user.email,
+      picture: user.picture,
+      user_id: user.user_id,
+      name: user?.user_metadata?.fullName || "",
+      last_login: user.last_login,
+      date_added: user.created_at
+    }));
+
+    return filteredUsers;
+  } catch (error) {
+    logger.error(`Error getting all users in service layer: ${error.message}`);
+    throw new Error(`Error getting users ${error.message}`);
+  }
+};

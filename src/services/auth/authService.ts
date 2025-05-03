@@ -16,14 +16,14 @@ import logger from "../../utils/logger";
  * @param password - The user's password.
  * @returns An object containing the Auth0 response and local user record.
  */
-export const signup = async (email: string, password: string) => {
+export const signup = async (email: string, password: string, fullName: string) => {
   try {
 
     logger.info("Sign up service called");
 
 
     // Create user in Auth0.
-    const auth0Result = await auth0Signup(email, password);
+    const auth0Result = await auth0Signup(email, password, fullName);
 
     if (auth0Result.ok) {
       const auth0User = auth0Result.value;

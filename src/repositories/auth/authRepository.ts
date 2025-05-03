@@ -25,6 +25,13 @@ type Auth0SignupError =
 
 // --- Auth0 User Data Type
 interface Auth0User {
+  user_metadata: any;
+  created_at: any;
+  last_login: any;
+  nickname: any;
+  name: any;
+  email_verified: any;
+  picture: any;
   user_id: string;
   email: string;
 }
@@ -130,7 +137,8 @@ export const auth0Login = async (email: string, password: string) => {
  */
 export const auth0Signup = async (
   email: string,
-  password: string
+  password: string,
+  fullName: string,
 ): Promise<Result<Auth0User, Auth0SignupError>> => {
   const tokenResult = await tryGetManagementToken();
 
@@ -151,6 +159,9 @@ export const auth0Signup = async (
     email,
     password,
     connection: "Username-Password-Authentication",
+    user_metadata: {
+      fullName: fullName
+    },
     verify_email: false, // Change as needed
     email_verified: true, // Change as needed - consider security implications
   };
@@ -316,5 +327,30 @@ export const listUsers = async (): Promise<User[]> => {
   } catch (error: any) {
     console.error("Error listing users:", error);
     throw new Error("Failed to list users");
+  }
+};
+
+export const getAllAuth0Users = async (): Promise<Auth0User[]> => {
+  const tokenResult = await tryGetManagementToken();
+
+  if (!tokenResult.ok) {
+    throw new Error("Failed to retrieve Auth0 token");
+  }
+
+  const mgmtToken = tokenResult.value;
+
+  const url = `https://${auth0Config.domain}/api/v2/users`;
+
+  try {
+    const response = await axios.get<Auth0User[]>(url, {
+      headers: {
+        Authorization: `Bearer ${mgmtToken}`,
+      },
+    });
+
+    return response.data;
+  } catch (error) {
+    logger.error("Error fetching users from Auth0", error);
+    throw new Error("Failed to fetch users from Auth0");
   }
 };
