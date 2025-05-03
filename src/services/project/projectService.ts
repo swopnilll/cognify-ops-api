@@ -1,4 +1,5 @@
 import {
+  addUsersToProjectRepository,
   addUserToProjectRepository,
   createFullProject,
   findAllProjects,
@@ -123,6 +124,13 @@ export const addUserToProjectSevice = async (details, projectId) => {
     throw new Error(`Error adding users ${error.message}`);
   }
 }
+
+export const addUsersToProjectService = async (userIdList: string[], projectId: number) => {
+  // You can add any business logic here if needed later (e.g., role validation)
+
+  const result = await addUsersToProjectRepository(userIdList, projectId);
+  return result;
+};
 
 export const getUsersForProjectService = async (projectId) => {
   try {

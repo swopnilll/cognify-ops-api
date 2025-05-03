@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import {  addUserToProjectController, createProjectController, getAllAvailableUsersListController, getProjectsController, getProjectsForUserController, getUsersForProjectController, updateProjectController } from '../../controllers/projects/projectController';
+import {  addUsersToProjectController, addUserToProjectController, createProjectController, getAllAvailableUsersListController, getProjectsController, getProjectsForUserController, getUsersForProjectController, updateProjectController } from '../../controllers/projects/projectController';
 import { handleValidationErrors, validateCreateProjectPayload } from '../../middleware/project/validateCreateProjectPayload';
 
 const projectRoutes = Router();
@@ -10,7 +10,8 @@ projectRoutes.post('/', validateCreateProjectPayload, handleValidationErrors, cr
 
 projectRoutes.get('/users/available', getAllAvailableUsersListController);
 
-projectRoutes.post('/:projectId/users', addUserToProjectController);
+projectRoutes.post('/:projectId/user', addUserToProjectController);
+projectRoutes.post('/:projectId/users', addUsersToProjectController);
 
 projectRoutes.get('/:projectId/users', getUsersForProjectController);
 

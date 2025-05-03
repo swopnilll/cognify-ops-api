@@ -216,4 +216,84 @@ export const addUserToProjectRepository = async (data, projectId: number) => {
   }
 };
 
+export const addUsersToProjectRepository = async (userIdList: string[], projectId: number) => {
+  const roleId = 3; // Can be dynamic later
+
+  try {
+    const [existingRoles, existingProjectUsers] = await prisma.$transaction([
+      prisma.user_Role.findMany({
+        where: {
+          user_id: { in: userIdList },
+          project_id: projectId,
+        },
+        select: { user_id: true },
+      }),
+      prisma.project_User.findMany({
+        where: {
+          user_id: { in: userIdList },
+          project_id: projectId,
+        },
+        select: { user_id: true },
+      }),
+    ]);
+
+    const roleUserIds = new Set(existingRoles.map((ur) => ur.user_id));
+    const projectUserIds = new Set(existingProjectUsers.map((pu) => pu.user_id));
+
+    const results = [];
+    const usersToInsert = [];
+
+    for (const userId of userIdList) {
+      if (roleUserIds.has(userId) || projectUserIds.has(userId)) {
+        results.push({
+          userId,
+          status: false,
+          reason: 'User already assigned role or added to project',
+        });
+      } else {
+        usersToInsert.push(userId);
+      }
+    }
+
+    if (usersToInsert.length > 0) {
+      const userRolesData = usersToInsert.map((userId) => ({
+        user_id: userId,
+        role_id: roleId,
+        project_id: projectId,
+      }));
+
+      const projectUsersData = usersToInsert.map((userId) => ({
+        project_id: projectId,
+        user_id: userId,
+      }));
+
+      await prisma.$transaction([
+        prisma.user_Role.createMany({ data: userRolesData }),
+        prisma.project_User.createMany({ data: projectUsersData }),
+      ]);
+
+      for (const userId of usersToInsert) {
+        results.push({
+          userId,
+          status: true,
+          reason: 'User successfully added to project',
+        });
+      }
+    }
+
+    return {
+      totalRequested: userIdList.length,
+      addedCount: usersToInsert.length,
+      skippedCount: results.filter(r => !r.status).length,
+      details: results,
+    };
+
+  } catch (error) {
+    logger.error(`Repository error bulk adding users to project: ${error.message}`);
+    throw new Error(`Repository error: ${error.message}`);
+  }
+};
+
+
+
 

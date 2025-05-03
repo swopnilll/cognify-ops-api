@@ -1,5 +1,5 @@
 import { Request, RequestHandler, Response } from "express";
-import { addUserToProjectSevice, createProject, getAllAvailableUsersListService, getAllProjects, getProjectsForUser, getUsersForProjectService, updateProjectService } from "../../services/project/projectService";
+import { addUsersToProjectService, addUserToProjectSevice, createProject, getAllAvailableUsersListService, getAllProjects, getProjectsForUser, getUsersForProjectService, updateProjectService } from "../../services/project/projectService";
 import logger from "../../utils/logger";
 
 export const createProjectController: RequestHandler = async (req: Request, res: Response): Promise<void> => {
@@ -86,6 +86,28 @@ export const addUserToProjectController: RequestHandler = async (req: Request, r
   } catch (error) {
     logger.error(`Controller error: ${error.message}`);
      res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+export const addUsersToProjectController = async (req: Request, res: Response) => {
+  const projectId = parseInt(req.params.projectId, 10);
+  const { userIdList } = req.body;
+
+  // Basic validation
+  if (!Array.isArray(userIdList) || userIdList.length === 0) {
+     res.status(400).json({ error: 'userIdList must be a non-empty array' });
+  }
+
+  if (isNaN(projectId)) {
+     res.status(400).json({ error: 'Invalid projectId parameter' });
+  }
+
+  try {
+    const result = await addUsersToProjectService(userIdList, projectId);
+     res.status(200).json(result);
+  } catch (error) {
+    console.error(`Controller error: ${error.message}`);
+     res.status(500).json({ error: 'Internal server error' });
   }
 };
 
