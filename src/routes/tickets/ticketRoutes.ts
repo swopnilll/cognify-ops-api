@@ -1,6 +1,7 @@
 import { Router } from 'express';
-import { createTicket, getAllTickets, getTicketById, getTicketsByProject, updateTicketAssignee } from '../../controllers/ticket/ticketController';
+import { createTicket, getAllTickets, getTicketById, getTicketsByProject, updateTicketAssignee, updateTicketStatusController } from '../../controllers/ticket/ticketController';
 import { handleValidationErrors, validateCreateTicketPayload } from '../../middleware/ticket/ticketValidator';
+
 
 
 const ticketRoutes = Router();
@@ -9,7 +10,8 @@ ticketRoutes.post( "/", validateCreateTicketPayload, handleValidationErrors, cre
 
 ticketRoutes.get('/', getAllTickets);    // Get all tickets
 ticketRoutes.get('/:ticketId', getTicketById); // Get specific ticket
-ticketRoutes.put('/:ticketId/assign', updateTicketAssignee); // Update assignee
+ticketRoutes.patch('/:ticketId/assign', updateTicketAssignee); // Update assignee
+ticketRoutes.patch('/:ticketId/status', updateTicketStatusController); // Update ticket
 
 ticketRoutes.get("/project/:projectId", getTicketsByProject);
 

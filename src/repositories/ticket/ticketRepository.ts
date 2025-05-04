@@ -108,7 +108,7 @@ export const getAllTicketsByProjectRepo = async (projectId: number) => {
         project_id: projectId,
       },
       include: {
-        Ticket_Assignment: true, 
+        Ticket_Assignment: true,
       },
     });
 
@@ -119,5 +119,41 @@ export const getAllTicketsByProjectRepo = async (projectId: number) => {
       error
     );
     throw new HttpError(500, "Failed to fetch tickets for the project.");
+  }
+};
+
+export const updateTicketStatusRepo = async (
+  ticketId: number,
+  statusId: number
+) => {
+  try {
+    // Check if the ticket exists
+    const existingTicket = await prisma.ticket.findUnique({
+      where: { ticket_id: ticketId },
+    });
+
+    if (!existingTicket) {
+      throw new HttpError(404, `Ticket with ID ${ticketId} not found`);
+    }
+
+    // Check if the status exists
+    const statusExists = await prisma.status.findUnique({
+      where: { status_id: statusId },
+    });
+
+    if (!statusExists) {
+      throw new HttpError(404, `Status with ID ${statusId} not found`);
+    }
+
+    // Update the ticket's status
+    const updatedTicket = await prisma.ticket.update({
+      where: { ticket_id: ticketId },
+      data: { status_id: statusId },
+    });
+
+    return updatedTicket;
+  } catch (error: any) {
+    console.error("Error in repository while updating ticket status:", error);
+    throw new HttpError(500, "Failed to update ticket status.");
   }
 };

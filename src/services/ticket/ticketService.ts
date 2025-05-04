@@ -4,6 +4,7 @@ import {
   getTicketRepo,
   getTicketsRepo,
   updateTicketAssigneeRepo,
+  updateTicketStatusRepo,
 } from "../../repositories/ticket/ticketRepository";
 import { TicketPayload } from "../../types/ticket";
 import { HttpError } from "../../utils/httpError";
@@ -77,5 +78,20 @@ export const getAllTicketsByProjectService = async (projectId: number) => {
     logger.error("Error in service layer (get one):", { error: error.message });
     if (error instanceof HttpError) throw error;
     throw new HttpError(500, "Internal Server Error");
+  }
+};
+
+export const updateTicketStatusService = async (
+  ticketId: number,
+  statusId: number
+) => {
+  try {
+    // Attempt to update the ticket status
+    const updatedTicket = await updateTicketStatusRepo(ticketId, statusId);
+    return updatedTicket;
+  } catch (error: any) {
+    // Log the error or re-throw it based on your use case
+    console.error("Error in updateTicketStatusService:", error);
+    throw new Error("Failed to update ticket status in the service layer.");
   }
 };

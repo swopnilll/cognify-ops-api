@@ -7,6 +7,7 @@ import {
   getTicketService,
   getTicketsService,
   updateTicketAssigneeService,
+  updateTicketStatusService,
 } from "../../services/ticket/ticketService";
 
 export const createTicket = async (req: Request, res: Response) => {
@@ -102,20 +103,42 @@ export const updateTicketAssignee = async (req: Request, res: Response) => {
   }
 };
 
-
 export const getTicketsByProject = async (req: Request, res: Response) => {
-    const projectId = parseInt(req.params.projectId);
-  
-    if (isNaN(projectId)) {
-       res.status(400).json({ message: "Invalid project ID" });
+  const projectId = parseInt(req.params.projectId);
+
+  if (isNaN(projectId)) {
+    res.status(400).json({ message: "Invalid project ID" });
+  }
+
+  try {
+    const tickets = await getAllTicketsByProjectService(projectId);
+    res.status(200).json({ data: tickets });
+  } catch (error: any) {
+    logger.error("Error in getTicketsByProject controller:", {
+      error: error.message,
+    });
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+export const updateTicketStatusController = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const ticketId = parseInt(req.params.ticketId);
+    const { statusId } = req.body;
+
+    if (isNaN(ticketId) || typeof statusId !== "number") {
+      res.status(400).json({ message: "Invalid input" });
     }
-  
-    try {
-      const tickets = await getAllTicketsByProjectService(projectId);
-      res.status(200).json({ data: tickets });
-    } catch (error: any) {
-      logger.error("Error in getTicketsByProject controller:", { error: error.message });
-      res.status(500).json({ message: "Internal server error" });
-    }
-  };
-  
+
+    const updatedTicket = await updateTicketStatusService(ticketId, statusId);
+    res.status(200).json(updatedTicket);
+  } catch (error) {
+    logger.error("Error in updating ticket status controller:", {
+      error: error.message,
+    });
+    res.status(500).json({ message: "Internal server error" });
+  }
+};

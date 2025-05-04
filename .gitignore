@@ -5,3 +5,5 @@ node_modules
 
 # Prisma related files
 .prisma/
+logs/combined.log
+logs/error.log
