@@ -9,6 +9,7 @@ import projectRoutes from './projects/projectRoutes';
 import healthRoutes from './healthRoutes';
 import statusRoutes from './status/statusRoutes';
 import ticketRoutes from './tickets/ticketRoutes';
+import openaiRoutes from './intellecta/openaiRoutes';
 
 const router = Router();
 
@@ -30,5 +31,7 @@ router.use('/projects', projectRoutes);
 router.use('/status', statusRoutes);
 
 router.use("/tickets", ticketRoutes)
+
+router.use('/openai', openaiRoutes);
 
 export default router;
