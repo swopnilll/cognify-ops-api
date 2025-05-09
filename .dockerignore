@@ -1,6 +1,7 @@
 node_modules
 dist
-
-Dockerfile
-.git
-.gitignore
+logs
+.env
+*.log
+*.md
+prisma/migrations
