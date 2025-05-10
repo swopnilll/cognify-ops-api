@@ -13,6 +13,7 @@ import { getAllAuth0Users, getAuth0UsersByIds } from "../../repositories/auth/au
 import { findUserRolesByProject } from "../../repositories/userRole/userRoleRepository";
 import { createTicketAndAssignToUserRepo } from "../../repositories/ticket/ticketRepository";
 import { HttpError } from "../../utils/httpError";
+import { sendEmbeddingRequest } from "../../queues/publishers/embeddingPublisher";
 
 type CreateProjectInput = {
   userId: string;
@@ -29,11 +30,11 @@ type AddUserToProjectPayload = {
 
 export const createProject = async (data: CreateProjectInput) => {
   try {
-    logger.info("createProject called");
+    logger.info("⏳ [createProject] Starting project creation...");
+
     let adminRoleId = await fetchRoleIdByRoleName("admin");
 
-    logger.info("role name", adminRoleId);
-    logger.info(adminRoleId);
+    logger.info(`[createProject] Fetched admin role ID: ${adminRoleId}`);
 
     const newProject = await createFullProject({
       name: data.name,
@@ -43,7 +44,15 @@ export const createProject = async (data: CreateProjectInput) => {
       role_id: adminRoleId,
     });
 
-    logger.info(`New project created with ID ${newProject.project_id}`);
+    logger.info(`✅ [createProject] New project created: ${newProject.project_id}`);
+
+    await sendEmbeddingRequest({
+      projectId: newProject.project_id,
+      taskId: null,
+    });
+
+    logger.info(`✅ [createProject] Embedding request sent for project ${newProject.project_id}`);
+
     return newProject;
   } catch (error) {
     // Log the error if something goes wrong

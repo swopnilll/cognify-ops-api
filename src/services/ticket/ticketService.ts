@@ -1,3 +1,4 @@
+import { sendEmbeddingRequest } from "../../queues/publishers/embeddingPublisher";
 import {
   createTicketAndAssignToUserRepo,
   getAllTicketsByProjectRepo,
@@ -22,6 +23,11 @@ export const createTicketAndAssignToUserService = async (
     logger.info(
       `Ticket ${result.ticket.ticket_id} created and assigned to user ${userId}`
     );
+
+    await sendEmbeddingRequest({
+          projectId: ticketData.project_id,
+          taskId: result.ticket.ticket_id,
+        });
 
     return result; // Return result with ticket and assignment
   } catch (error: any) {
