@@ -29,7 +29,12 @@
     "openai": "^4.97.0",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
-    "winston": "^3.17.0"
+    "winston": "^3.17.0",
+    "@langchain/community": "^0.3.42",
+    "@langchain/core": "^0.3.53",
+    "@langchain/openai": "^0.5.10",
+    "langchain": "^0.3.24",
+    "pg": "^8.15.5"
   },
   "devDependencies": {
     "@types/express": "^5.0.1",
