@@ -1,5 +1,5 @@
 import logger from "../../utils/logger";
-import { initVectorStore } from "./vectorstore";
+import { initVectorStore } from "./vectorstores";
 import { ChatOpenAI } from "@langchain/openai";
 
 import dotenv from "dotenv";
