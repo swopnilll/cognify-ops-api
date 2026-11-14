@@ -43,6 +43,7 @@ model Project {
   project_users Project_User[]
   user          User           @relation("ProjectCreator", fields: [created_by], references: [user_id], onDelete: Cascade) // Explicit relation name
   user_roles    User_Role[]
+  conversations Conversation[]
 }
 
 model Ticket {
@@ -94,6 +95,7 @@ model User {
   participating_projects Project_User[] @relation("UserToProject")
 
   Ticket_Assignment Ticket_Assignment[]
+  conversations     Conversation[]
 }
 
 model Project_User {
@@ -124,6 +126,41 @@ model Ticket_Assignment {
   user   User   @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
 
   @@index([user_id])
+}
+
+// One Intellecta chat. It belongs to the user who started it, inside one
+// project: other members do not see it.
+model Conversation {
+  conversation_id Int       @id @default(autoincrement())
+  project_id      Int
+  user_id         String
+  title           String // the first question, shortened
+  created_at      DateTime  @default(now())
+  updated_at      DateTime  @updatedAt // moves when a message is added
+  project         Project   @relation(fields: [project_id], references: [project_id], onDelete: Cascade)
+  user            User      @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  messages        Message[]
+
+  @@index([user_id, project_id, updated_at])
+}
+
+model Message {
+  message_id      Int           @id @default(autoincrement())
+  conversation_id Int
+  sender          MessageSender
+  text            String
+  is_error        Boolean       @default(false) // the reply was an error notice
+  is_paused       Boolean       @default(false) // the fixed "AI is switched off" reply
+  created_at      DateTime      @default(now())
+  conversation    Conversation  @relation(fields: [conversation_id], references: [conversation_id], onDelete: Cascade)
+
+  // message_id is the order of the messages inside a conversation
+  @@index([conversation_id, message_id])
+}
+
+enum MessageSender {
+  user
+  bot
 }
 
 // Vector store for the RAG pipeline. Written by embedding-microservice,

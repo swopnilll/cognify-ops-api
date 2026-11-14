@@ -10,6 +10,7 @@ import healthRoutes from './healthRoutes';
 import statusRoutes from './status/statusRoutes';
 import ticketRoutes from './tickets/ticketRoutes';
 import openaiRoutes from './intellecta/openaiRoutes';
+import conversationRoutes, { projectConversationRoutes } from './conversation/conversationRoutes';
 
 const router = Router();
 
@@ -26,6 +27,7 @@ router.use(passport.authenticate('jwt', { session: false }));
 
 router.get('/roles', getRolesController);
 
+router.use('/projects/:projectId/conversations', projectConversationRoutes);
 router.use('/projects', projectRoutes);
 
 router.use('/status', statusRoutes);
@@ -33,5 +35,7 @@ router.use('/status', statusRoutes);
 router.use("/tickets", ticketRoutes)
 
 router.use('/openai', openaiRoutes);
+
+router.use('/conversations', conversationRoutes);
 
 export default router;
