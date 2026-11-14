@@ -7,10 +7,9 @@ export const loginController = async (req: Request, res: Response) => {
     const { email, password } = req.body;
     const result = await login(email, password);
 
-    // Access tokens from the nested auth0Data property
     res.status(200).json(result);
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    res.status(error.statusCode || 500).json({ error: error.message });
   }
 };
 
@@ -20,7 +19,7 @@ export const signupController = async (req: Request, res: Response) => {
     const user = await signup(email, password, fullName);
     res.status(201).json(user);
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    res.status(error.statusCode || 500).json({ error: error.message });
   }
 };
 
@@ -30,11 +29,13 @@ export const profileController = (req: Request, res: Response) => {
 
 export const updateProfileController = async (req: Request, res: Response) => {
   try {
-    const userId = req.body.userId;
+    // Users may only update their own profile: the ID comes from the verified JWT.
+    const userId = (req.user as any)?.sub;
     const { email, password, fullName, picture } = req.body;
 
     if (!userId) {
-       res.status(400).json({ error: "Missing user ID" });
+      res.status(401).json({ error: "Unauthorized" });
+      return;
     }
 
     const updatedUser = await updateUserProfile(userId, {
@@ -46,6 +47,6 @@ export const updateProfileController = async (req: Request, res: Response) => {
 
     res.status(200).json(updatedUser);
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    res.status(error.statusCode || 500).json({ error: error.message });
   }
 };

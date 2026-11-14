@@ -7,7 +7,7 @@ dotenv.config();
 
 const embeddings = new OpenAIEmbeddings({
   openAIApiKey: process.env.OPENAI_API_KEY,
-  model: process.env.EMBEDDING_MODEL,
+  model: process.env.EMBEDDING_MODEL || "text-embedding-3-small",
 });
 
 export async function initVectorStore() {

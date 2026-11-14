@@ -14,7 +14,7 @@ export async function getQueryResponse(query: string) {
     const model = new ChatOpenAI({
       openAIApiKey: process.env.OPENAI_API_KEY,
       temperature: 0.7,
-      model: "gpt-4o",
+      model: process.env.OPENAI_CHAT_MODEL || "gpt-4o",
       streaming: true,
     });
 

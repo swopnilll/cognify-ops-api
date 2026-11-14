@@ -15,7 +15,7 @@ export const streamAnswer = async (req: Request, res: Response): Promise<void> =
 
   try {
     const stream = await openai.chat.completions.create({
-      model: "gpt-4",
+      model: process.env.OPENAI_CHAT_MODEL || "gpt-4o",
       messages: [{ role: "user", content: question }],
       stream: true,
     });

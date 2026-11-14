@@ -13,7 +13,7 @@ authRoutes.post('/login', loginController);
 // Signup Route
 authRoutes.post('/signup', signupController);
 
-authRoutes.patch('/update-profile', updateProfileController);
+authRoutes.patch('/update-profile', passport.authenticate('jwt', { session: false }), updateProfileController);
 
 
 export default authRoutes;

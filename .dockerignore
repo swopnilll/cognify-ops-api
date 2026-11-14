@@ -4,4 +4,3 @@ logs
 .env
 *.log
 *.md
-prisma/migrations

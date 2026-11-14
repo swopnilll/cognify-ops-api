@@ -1,23 +1,20 @@
-FROM node:22-alpine AS base
+FROM node:22-alpine
 
 WORKDIR /app
 
-# Copy package files and prisma schema (for postinstall)
+# Prisma's query engine needs OpenSSL on Alpine
+RUN apk add --no-cache openssl
+
+# Install all dependencies: TypeScript is needed to build, and the Prisma CLI
+# is needed at start-up to apply migrations.
 COPY package*.json ./
 COPY prisma ./prisma
+RUN npm ci
 
-# Install dependencies (production only)
-RUN npm ci --omit=dev
-
-# Copy the rest of your source code
 COPY . .
-
-# Build TypeScript code
 RUN npm run build
-
-# Generate Prisma client (safe to run again)
-RUN npx prisma generate
 
 EXPOSE 3000
 
-CMD ["node", "dist/server.js"]
+# Apply pending migrations, then start the server
+CMD ["sh", "-c", "npx prisma migrate deploy && node dist/server.js"]

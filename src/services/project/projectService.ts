@@ -9,7 +9,7 @@ import {
 import { fetchRoleIdByRoleName } from "../role/roleService";
 
 import logger from "../../utils/logger";
-import { getAllAuth0Users, getAuth0UsersByIds } from "../../repositories/auth/authRepository";
+import { listUserProfiles, getUserProfilesByIds } from "../../repositories/auth/authRepository";
 import { findUserRolesByProject } from "../../repositories/userRole/userRoleRepository";
 import { createTicketAndAssignToUserRepo } from "../../repositories/ticket/ticketRepository";
 import { HttpError } from "../../utils/httpError";
@@ -109,9 +109,9 @@ export const updateProjectService = async (
 
 export const getAllAvailableUsersListService = async () => {
   try {
-    const usersFromAuth0 = await getAllAuth0Users();
+    const allUsers = await listUserProfiles();
 
-    const filteredUsers = usersFromAuth0.map(user => ({
+    const filteredUsers = allUsers.map(user => ({
       email: user.email,
       picture: user.picture,
       user_id: user.user_id,
@@ -153,7 +153,7 @@ export const getUsersForProjectService = async (projectId) => {
 
     const userIds = users.map(user => user.user_id);
 
-    const userDetails = await getAuth0UsersByIds(userIds);
+    const userDetails = await getUserProfilesByIds(userIds);
 
     // Create a map from user_id to role_id for quick lookup
     const roleMap = new Map();
@@ -161,7 +161,7 @@ export const getUsersForProjectService = async (projectId) => {
       roleMap.set(user.user_id, user.role_id);
     });
 
-    // Combine Auth0 user info + role_id
+    // Combine user profile + role_id
     const combinedUsers = userDetails.map(user => ({
       ...user,
       role_id: roleMap.get(user.user_id) ?? null, // Add role_id, null if not found (shouldn't happen)

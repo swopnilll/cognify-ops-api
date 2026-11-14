@@ -1,94 +1,91 @@
-// src/services/authService.ts
-import { AxiosError } from "axios";
+// src/services/auth/authService.ts
+import jwt, { SignOptions } from "jsonwebtoken";
 import {
-  auth0Signup,
-  auth0Login,
   createUser,
   getUser,
-  updateAuth0User,
+  getUserByEmail,
+  normalizeEmail,
+  toUserProfile,
+  updateUser,
 } from "../../repositories/auth/authRepository";
+import { getAuthConfig } from "../../config/auth";
+import { hashPassword, verifyPassword } from "../../utils/password";
+import { HttpError } from "../../utils/httpError";
 import logger from "../../utils/logger";
 
-/**
- * Signs up a new user by first creating the user in Auth0,
- * then creating a corresponding record in the local database.
- *
- * @param email - The user's email.
- * @param password - The user's password.
- * @returns An object containing the Auth0 response and local user record.
- */
-export const signup = async (email: string, password: string, fullName: string) => {
-  try {
+const MIN_PASSWORD_LENGTH = 8;
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-    logger.info("Sign up service called");
-
-
-    // Create user in Auth0.
-    const auth0Result = await auth0Signup(email, password, fullName);
-
-    if (auth0Result.ok) {
-      const auth0User = auth0Result.value;
-      logger.info("Auth0 user created:", auth0User);
-
-      // Create a corresponding record in the local database.
-      const localUser = await createUser(auth0User.user_id);
-
-      // Return both Auth0 and local user details.
-      return { auth0User, localUser };
-    }
-
-    // Handle the case where Auth0 signup fails.
-    const errorMessage = !auth0Result.ok && 'error' in auth0Result ? auth0Result.error : "Unknown error during signup";
-    logger.error("Auth0 signup failed:", errorMessage);
-    throw new Error(typeof errorMessage === "string" ? errorMessage : JSON.stringify(errorMessage));  
-  } catch (error: any) {
-    // Optionally, you can add more detailed error handling here.
-    if (error instanceof AxiosError) {
-      console.error("Signup error:", error.response?.data || error.message);
-    } else {
-      console.error("Signup error:", error);
-    }
-    throw error;
+const validatePassword = (password: unknown): string => {
+  if (typeof password !== "string" || password.length < MIN_PASSWORD_LENGTH) {
+    throw new HttpError(400, `Password must be at least ${MIN_PASSWORD_LENGTH} characters`);
   }
+  return password;
+};
+
+const validateEmail = (email: unknown): string => {
+  if (typeof email !== "string" || !EMAIL_PATTERN.test(email.trim())) {
+    throw new HttpError(400, "A valid email is required");
+  }
+  return normalizeEmail(email);
 };
 
 /**
- * Logs in a user using Auth0, then retrieves the corresponding local user record.
- *
- * @param email - The user's email.
- * @param password - The user's password.
- * @returns An object containing the Auth0 login data and local user record.
+ * Creates a new user with a hashed password.
+ */
+export const signup = async (email: string, password: string, fullName: string) => {
+  const validEmail = validateEmail(email);
+  const validPassword = validatePassword(password);
+
+  if (await getUserByEmail(validEmail)) {
+    throw new HttpError(409, "An account with this email already exists");
+  }
+
+  const user = await createUser({
+    email: validEmail,
+    passwordHash: await hashPassword(validPassword),
+    fullName: typeof fullName === "string" ? fullName.trim() : "",
+  });
+
+  logger.info(`User signed up: ${user.user_id}`);
+
+  return { user: toUserProfile(user) };
+};
+
+/**
+ * Checks the email and password and returns a signed access token.
  */
 export const login = async (email: string, password: string) => {
-  try {
-    // Perform Auth0 login.
-    const auth0Data = await auth0Login(email, password);
+  const invalid = new HttpError(401, "Wrong email or password");
 
-    // Ensure that we received a valid user id from Auth0.
-    if (!auth0Data.userProfile) {
-      throw new Error("Auth0 did not return a valid user_id");
-    }
+  if (typeof email !== "string" || typeof password !== "string") throw invalid;
 
-    // Optionally, ensure a corresponding local record exists.
-    // Depending on your application logic, you might want to create a local user if one does not exist.
-    let localUser = await getUser(auth0Data.userProfile.sub);
-    if (!localUser) {
-      // In case the user record is missing, you might choose to create it.
-      localUser = await createUser(auth0Data.userProfile.sub);
-    }
+  const user = await getUserByEmail(email);
+  if (!user || !user.password_hash) throw invalid;
+  if (!(await verifyPassword(password, user.password_hash))) throw invalid;
 
-    return {
-      accessToken: auth0Data.accessToken,
-      user: auth0Data.userProfile
-    };
-  } catch (error: any) {
-    if (error instanceof AxiosError) {
-      console.error("Login error:", error.response?.data || error.message);
-    } else {
-      console.error("Login error:", error);
-    }
-    throw error;
-  }
+  await updateUser(user.user_id, { last_login: new Date() });
+
+  const authConfig = getAuthConfig();
+  const profile = toUserProfile(user);
+
+  const accessToken = jwt.sign({ email: profile.email }, authConfig.jwtSecret, {
+    subject: user.user_id,
+    issuer: authConfig.issuer,
+    expiresIn: authConfig.jwtExpiresIn as SignOptions["expiresIn"],
+    algorithm: "HS256",
+  });
+
+  return {
+    accessToken,
+    user: {
+      sub: profile.user_id,
+      email: profile.email,
+      name: profile.name,
+      nickname: profile.nickname,
+      picture: profile.picture,
+    },
+  };
 };
 
 export const updateUserProfile = async (
@@ -100,21 +97,23 @@ export const updateUserProfile = async (
     picture?: string;
   }
 ) => {
-  const payload: any = {
-    ...(updates.email && { email: updates.email }),
-    ...(updates.password && { password: updates.password }),
-    ...(updates.fullName && { user_metadata: { fullName: updates.fullName } }),
-    ...(updates.picture && { picture: updates.picture }),
-  };
-
-  const result = await updateAuth0User(userId, payload);
-
-  if (!result.ok) {
-    if ('error' in result) {
-      throw new Error(JSON.stringify(result.error));
-    }
-    throw new Error("Unknown error occurred while updating the user profile.");
+  if (!(await getUser(userId))) {
+    throw new HttpError(404, "User not found");
   }
 
-  return result.value;
+  const data: Parameters<typeof updateUser>[1] = {};
+
+  if (updates.email) {
+    const email = validateEmail(updates.email);
+    const existing = await getUserByEmail(email);
+    if (existing && existing.user_id !== userId) {
+      throw new HttpError(409, "An account with this email already exists");
+    }
+    data.email = email;
+  }
+  if (updates.password) data.password_hash = await hashPassword(validatePassword(updates.password));
+  if (updates.fullName) data.full_name = updates.fullName.trim();
+  if (updates.picture) data.picture = updates.picture;
+
+  return toUserProfile(await updateUser(userId, data));
 };
