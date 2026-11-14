@@ -1,13 +1,20 @@
 import { sendEmbeddingRequest } from "../../queues/publishers/embeddingPublisher";
 import {
   createTicketAndAssignToUserRepo,
+  deleteTicketEmbeddingsRepo,
+  deleteTicketRepo,
   getAllTicketsByProjectRepo,
   getTicketRepo,
   getTicketsRepo,
   updateTicketAssigneeRepo,
+  updateTicketRepo,
   updateTicketStatusRepo,
 } from "../../repositories/ticket/ticketRepository";
-import { TicketPayload } from "../../types/ticket";
+import {
+  TicketListFilters,
+  TicketPayload,
+  TicketUpdatePayload,
+} from "../../types/ticket";
 import { HttpError } from "../../utils/httpError";
 import logger from "../../utils/logger";
 
@@ -32,6 +39,7 @@ export const createTicketAndAssignToUserService = async (
     return result; // Return result with ticket and assignment
   } catch (error: any) {
     logger.error("Error in service layer:", { error: error.message });
+    if (error instanceof HttpError) throw error;
     throw new HttpError(500, "Internal Server Error");
   }
 };
@@ -77,9 +85,12 @@ export const updateTicketAssigneeService = async (
   }
 };
 
-export const getAllTicketsByProjectService = async (projectId: number) => {
+export const getAllTicketsByProjectService = async (
+  projectId: number,
+  filters: TicketListFilters = {}
+) => {
   try {
-    return await getAllTicketsByProjectRepo(projectId);
+    return await getAllTicketsByProjectRepo(projectId, filters);
   } catch (error) {
     logger.error("Error in service layer (get one):", { error: error.message });
     if (error instanceof HttpError) throw error;
@@ -99,5 +110,56 @@ export const updateTicketStatusService = async (
     // Log the error or re-throw it based on your use case
     console.error("Error in updateTicketStatusService:", error);
     throw new Error("Failed to update ticket status in the service layer.");
+  }
+};
+
+export const updateTicketService = async (
+  ticketId: number,
+  changes: TicketUpdatePayload
+) => {
+  try {
+    const ticket = await updateTicketRepo(ticketId, changes);
+    logger.info(`Ticket ${ticketId} updated`);
+
+    // The stored embedding describes the old text: replace it. The edit is
+    // already saved, so a failure here is logged and not returned to the user.
+    try {
+      await deleteTicketEmbeddingsRepo(ticketId);
+      await sendEmbeddingRequest({
+        projectId: ticket.project_id,
+        taskId: ticketId,
+      });
+    } catch (error: any) {
+      logger.error(`Could not refresh embeddings for ticket ${ticketId}`, {
+        error: error.message,
+      });
+    }
+
+    return ticket;
+  } catch (error: any) {
+    logger.error("Error in service layer (update):", { error: error.message });
+    if (error instanceof HttpError) throw error;
+    throw new HttpError(500, "Internal Server Error");
+  }
+};
+
+export const deleteTicketService = async (ticketId: number) => {
+  try {
+    const ticket = await deleteTicketRepo(ticketId);
+    logger.info(`Ticket ${ticketId} deleted`);
+
+    try {
+      await deleteTicketEmbeddingsRepo(ticketId);
+    } catch (error: any) {
+      logger.error(`Could not remove embeddings for ticket ${ticketId}`, {
+        error: error.message,
+      });
+    }
+
+    return ticket;
+  } catch (error: any) {
+    logger.error("Error in service layer (delete):", { error: error.message });
+    if (error instanceof HttpError) throw error;
+    throw new HttpError(500, "Internal Server Error");
   }
 };
